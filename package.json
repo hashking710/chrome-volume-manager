@@ -1,38 +1,32 @@
 {
   "name": "chrome-volume-manager",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Chrome extension to control any tab's volume separately",
   "files": [
     "dist",
     "!*.map"
   ],
   "scripts": {
-    "build": "parcel build src/popup.html src/background.ts",
-    "watch": "parcel watch src/popup.html src/background.ts"
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/piousdeer/chrome-volume-manager.git"
+    "url": "git+https://github.com/hashking710/chrome-volume-manager.git"
   },
   "author": "piousdeer",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/piousdeer/chrome-volume-manager/issues"
+    "url": "https://github.com/hashking710/chrome-volume-manager/issues"
   },
-  "homepage": "https://github.com/piousdeer/chrome-volume-manager#readme",
+  "homepage": "https://github.com/hashking710/chrome-volume-manager#readme",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "devDependencies": {
-    "@types/material-components-web": "^0.43.1",
-    "babel-core": "^6.26.3",
-    "babel-preset-env": "^1.7.0",
-    "parcel-bundler": "^1.12.4",
-    "parcel-plugin-static-files-copy": "^2.2.1",
-    "sass": "^1.23.2",
-    "tslint": "^5.20.0",
-    "tslint-config-standeerd": "^4.0.0",
-    "typescript": "^3.6.4"
-  },
-  "dependencies": {
-    "chrome-extension-async": "^3.4.1",
-    "material-components-web": "^3.2.0"
+    "@types/chrome": "^0.3.4",
+    "esbuild": "^0.28.2",
+    "sass": "^1.105.1",
+    "typescript": "^7.0.2"
   }
 }

@@ -1,17 +1,37 @@
-<center>
-  <h1 align="center">Volume Manager</h1>
-  <h3 align="center">A simple Chrome extension to control any tab's volume separately.</h3>
-  <img align="center" src='https://owo.sh/65AVTty.png' />
-</center><br>
+# Volume Manager
 
-* Click on the extension icon and drag the slider to adjust the volume of the active tab
-* You can reduce its volume down to 0% and boost it up to 600%
-* The current volume is displayed as a badge next to the icon
+A lightweight Chrome extension for adjusting the volume of the current tab without changing your system volume.
 
-There are several similar extensions. However, they're either filled with telemetry and analytics, or their UI sucks.
+This project is a modernized fork of [piousdeer/chrome-volume-manager](https://github.com/piousdeer/chrome-volume-manager).
 
-# Usage
-This extension is not in Chrome Web Store yet; you have to build it yourself.
-1. Clone this repository
-2. Run `npm install && npm run build`
-3. Go to `chrome://extensions/`, enable developer mode and load `dist` folder as an unpacked extension
+## Features
+
+- Set tab volume from 0% to 600%, with fine-grained slider control.
+- Jump to common levels with one-click presets.
+- Mute and restore the previous non-zero level.
+- See the current level on the extension badge.
+- Keep the tab's audio playing while its volume is adjusted.
+- No analytics, tracking, or runtime network requests.
+
+## Build and install
+
+Requirements: Node.js 20.19 or newer and Chrome 116 or newer.
+
+```sh
+npm ci
+npm run typecheck
+npm run build
+```
+
+Open `chrome://extensions/`, enable **Developer mode**, choose **Load unpacked**, and select the generated `dist` folder.
+
+## Using the extension
+
+Open the extension popup on the tab you want to control. Adjust the slider, choose a preset, or mute the tab. Tab audio is captured only when a volume change is made; closing the tab releases the audio stream.
+
+Chrome restricts capture on certain pages, including internal browser pages and some protected media. The popup reports an error when the current tab cannot be controlled.
+
+## Development
+
+- `npm run typecheck` checks TypeScript and Chrome extension API types.
+- `npm run build` creates the loadable Manifest V3 extension in `dist`.
