@@ -1,6 +1,6 @@
 {
   "name": "chrome-volume-manager",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Chrome extension to control any tab's volume separately",
   "files": [
     "dist",
@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
     "@types/chrome": "^0.3.4",
     "esbuild": "^0.28.2",
     "sass": "^1.105.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }

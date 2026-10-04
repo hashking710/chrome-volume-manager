@@ -1,4 +1,5 @@
 import type { PopupMessage } from './interfaces/Message'
+import { muteToggleValue } from './volume-state'
 
 const volumeSlider = requireElement(document.querySelector<HTMLInputElement>('#volume-slider'))
 const volumeValue = requireElement(document.querySelector<HTMLElement>('#volume-value'))
@@ -35,11 +36,7 @@ presetButtons.forEach(button => {
 })
 
 muteButton.addEventListener('click', () => {
-  const isMuted = muteButton.getAttribute('aria-pressed') === 'true'
-  const value = isMuted ? lastAudibleVolume : 0
-  if (!isMuted && Number(volumeSlider.value) > 0) {
-    lastAudibleVolume = Number(volumeSlider.value)
-  }
+  const value = muteToggleValue(Number(volumeSlider.value) / 100, lastAudibleVolume / 100) * 100
   volumeSlider.value = String(value)
   updateDisplay(value)
   scheduleVolumeUpdate(value, true)
@@ -53,13 +50,13 @@ async function initialize () {
     }
 
     activeTabId = activeTab.id
-    const initialValue = await sendMessage({ name: 'get-tab-volume', tabId: activeTabId })
-    if (typeof initialValue !== 'number' || !Number.isFinite(initialValue) ||
-        initialValue < 0 || initialValue > 6) {
+    const state = await sendMessage({ name: 'get-tab-volume', tabId: activeTabId })
+    if (!isVolumeState(state)) {
       throw new Error('The current tab volume could not be read.')
     }
 
-    const value = Math.round(initialValue * 100 / 5) * 5
+    const value = Math.round(state.value * 100 / 5) * 5
+    lastAudibleVolume = Math.round(state.lastAudibleValue * 100 / 5) * 5
     volumeSlider.value = String(value)
     updateDisplay(value)
     setControlsEnabled(true)
@@ -135,6 +132,23 @@ async function sendMessage (message: PopupMessage): Promise<unknown> {
     throw new Error(String(response.error))
   }
   return response
+}
+
+function isVolumeState (value: unknown): value is {
+  captured: boolean,
+  value: number,
+  lastAudibleValue: number
+} {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  return 'captured' in value && typeof value.captured === 'boolean' &&
+    'value' in value && typeof value.value === 'number' &&
+    Number.isFinite(value.value) && value.value >= 0 && value.value <= 6 &&
+    'lastAudibleValue' in value && typeof value.lastAudibleValue === 'number' &&
+    Number.isFinite(value.lastAudibleValue) &&
+    value.lastAudibleValue > 0 && value.lastAudibleValue <= 6
 }
 
 function requireElement<T> (element: T | null): T {

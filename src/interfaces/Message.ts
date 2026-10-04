@@ -30,7 +30,8 @@ export type OffscreenMessage = {
 
 export type VolumeState = {
   captured: boolean,
-  value: number
+  value: number,
+  lastAudibleValue: number
 }
 
 export type OperationResult = {

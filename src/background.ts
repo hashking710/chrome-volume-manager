@@ -4,26 +4,13 @@ import type {
   PopupMessage,
   VolumeState
 } from './interfaces/Message'
+import { createLatestValueQueue, type LatestValueQueue } from './latest-value-queue'
+import { createVolumeState } from './volume-state'
 
 const popupUrl = chrome.runtime.getURL('popup.html')
 let creatingOffscreenDocument: Promise<void> | undefined
 
-interface VolumeUpdateWaiter {
-  resolve: () => void,
-  reject: (error: unknown) => void
-}
-
-interface VolumeUpdateBatch {
-  value: number,
-  waiters: VolumeUpdateWaiter[]
-}
-
-interface VolumeUpdateQueue {
-  running: boolean,
-  pending?: VolumeUpdateBatch
-}
-
-const tabVolumeUpdates = new Map<number, VolumeUpdateQueue>()
+const tabVolumeUpdates = new Map<number, LatestValueQueue<number>>()
 
 chrome.runtime.onMessage.addListener((message: PopupMessage, sender, sendResponse) => {
   if (sender.url !== popupUrl) {
@@ -56,7 +43,7 @@ async function handlePopupMessage (message: PopupMessage) {
   if (message.name === 'get-tab-volume') {
     const contexts = await getOffscreenContexts()
     if (contexts.length === 0) {
-      return 1
+      return createVolumeState()
     }
 
     const state = await sendToOffscreen({
@@ -64,7 +51,7 @@ async function handlePopupMessage (message: PopupMessage) {
       name: 'get-tab-volume',
       tabId: message.tabId
     })
-    return state.value
+    return state
   }
 
   if (!Number.isInteger(message.tabId) || !Number.isFinite(message.value) ||
@@ -78,44 +65,20 @@ async function handlePopupMessage (message: PopupMessage) {
 function queueTabVolumeUpdate (tabId: number, value: number): Promise<void> {
   let queue = tabVolumeUpdates.get(tabId)
   if (!queue) {
-    queue = { running: false }
+    let newQueue: LatestValueQueue<number>
+    newQueue = createLatestValueQueue(
+      nextValue => applyTabVolume(tabId, nextValue),
+      () => {
+        if (tabVolumeUpdates.get(tabId) === newQueue) {
+          tabVolumeUpdates.delete(tabId)
+        }
+      }
+    )
+    queue = newQueue
     tabVolumeUpdates.set(tabId, queue)
   }
 
-  const update = new Promise<void>((resolve, reject) => {
-    if (queue.pending) {
-      queue.pending.value = value
-      queue.pending.waiters.push({ resolve, reject })
-    } else {
-      queue.pending = { value, waiters: [{ resolve, reject }] }
-    }
-
-    if (!queue.running) {
-      queue.running = true
-      void processTabVolumeUpdates(tabId, queue)
-    }
-  })
-
-  return update
-}
-
-async function processTabVolumeUpdates (tabId: number, queue: VolumeUpdateQueue) {
-  while (queue.pending) {
-    const batch = queue.pending
-    queue.pending = undefined
-
-    try {
-      await applyTabVolume(tabId, batch.value)
-      batch.waiters.forEach(waiter => waiter.resolve())
-    } catch (error) {
-      batch.waiters.forEach(waiter => waiter.reject(error))
-    }
-  }
-
-  queue.running = false
-  if (tabVolumeUpdates.get(tabId) === queue) {
-    tabVolumeUpdates.delete(tabId)
-  }
+  return queue.enqueue(value)
 }
 
 async function applyTabVolume (tabId: number, value: number) {
@@ -212,7 +175,10 @@ function isVolumeState (response: unknown): response is VolumeState {
   return typeof response === 'object' && response !== null &&
     'captured' in response && typeof response.captured === 'boolean' &&
     'value' in response && typeof response.value === 'number' &&
-    Number.isFinite(response.value) && response.value >= 0 && response.value <= 6
+    Number.isFinite(response.value) && response.value >= 0 && response.value <= 6 &&
+    'lastAudibleValue' in response && typeof response.lastAudibleValue === 'number' &&
+    Number.isFinite(response.lastAudibleValue) &&
+    response.lastAudibleValue > 0 && response.lastAudibleValue <= 6
 }
 
 function isOperationResult (response: unknown): response is OperationResult {

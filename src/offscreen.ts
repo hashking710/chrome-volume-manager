@@ -1,10 +1,12 @@
 import type { OffscreenMessage, OperationResult, VolumeState } from './interfaces/Message'
+import { createVolumeState, setVolumeState } from './volume-state'
 
 interface CapturedTab {
   audioContext: AudioContext,
   stream: MediaStream,
   streamSource: MediaStreamAudioSourceNode,
-  gainNode: GainNode
+  gainNode: GainNode,
+  state: VolumeState
 }
 
 const capturedTabs = new Map<number, CapturedTab>()
@@ -30,7 +32,7 @@ async function handleMessage (
 ): Promise<VolumeState | OperationResult> {
   if (message.name === 'get-tab-volume') {
     const tab = capturedTabs.get(message.tabId)
-    return { captured: tab !== undefined, value: tab?.gainNode.gain.value ?? 1 }
+    return tab?.state ?? createVolumeState()
   }
 
   if (message.name === 'set-tab-volume') {
@@ -39,6 +41,7 @@ async function handleMessage (
       throw new Error('The tab audio stream is not available.')
     }
     tab.gainNode.gain.value = message.value
+    tab.state = setVolumeState(tab.state, message.value)
     return { ok: true }
   }
 
@@ -55,6 +58,7 @@ async function captureTab (tabId: number, streamId: string, value: number) {
   const existingTab = capturedTabs.get(tabId)
   if (existingTab) {
     existingTab.gainNode.gain.value = value
+    existingTab.state = setVolumeState(existingTab.state, value)
     return
   }
 
@@ -66,6 +70,7 @@ async function captureTab (tabId: number, streamId: string, value: number) {
       throw new Error('The tab audio stream could not be created.')
     }
     tab.gainNode.gain.value = value
+    tab.state = setVolumeState(tab.state, value)
     return
   }
 
@@ -100,7 +105,13 @@ async function createCapturedTab (tabId: number, streamId: string, value: number
     streamSource.connect(gainNode)
     gainNode.connect(audioContext.destination)
     await audioContext.resume()
-    capturedTabs.set(tabId, { audioContext, stream, streamSource, gainNode })
+    capturedTabs.set(tabId, {
+      audioContext,
+      stream,
+      streamSource,
+      gainNode,
+      state: createVolumeState(value, true)
+    })
   } catch (error) {
     stream.getTracks().forEach(track => track.stop())
     if (audioContext && audioContext.state !== 'closed') {
